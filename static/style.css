@@ -100,6 +100,18 @@ body {
     body { padding: 20px; }
     .container { padding: 16px; }
   }
+  
+  .tts-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 8px 0 4px 0;
+  }
+  .tts-row select {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
 
   /* Lưới xem trước ảnh */
   .preview-grid {

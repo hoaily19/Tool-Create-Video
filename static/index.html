@@ -1,100 +1,102 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-<meta charset="UTF-8" />
-<title>Tạo Video Từ Nhiều Ảnh & Kịch Bản</title>
-<link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8" />
+    <title>Tạo Video Từ Nhiều Ảnh & Kịch Bản</title>
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
+
 <body>
-  <div class="container">
-    <h1>Tạo Video Từ Nhiều Ảnh & Kịch Bản</h1>
+    <div class="container">
+        <h1>Tạo Video Từ Nhiều Ảnh & Kịch Bản</h1>
 
-    <form id="formUpload">
-      <label>Chọn nhiều ảnh:</label>
-      <input type="file" id="imagesInput" name="images" accept="image/*" multiple required />
+        <form id="formUpload">
+            <label>Chọn nhiều ảnh:</label>
+            <input type="file" id="imagesInput" name="images" accept="image/*" multiple required />
 
-      <div id="previewGrid" class="preview-grid" aria-live="polite"></div>
+            <div id="previewGrid" class="preview-grid" aria-live="polite"></div>
 
-      <label>Nhập kịch bản (mỗi dòng ứng với một ảnh):</label>
-      <textarea name="script" rows="8" placeholder="Dòng 1: Chữ cho ảnh 1&#10;Dòng 2: Chữ cho ảnh 2&#10;..." required></textarea>
+            <label>Nhập kịch bản (mỗi dòng ứng với một ảnh):</label>
+            <textarea name="script" rows="8" placeholder="Dòng 1: Chữ cho ảnh 1&#10;Dòng 2: Chữ cho ảnh 2&#10;..."
+                required></textarea>
 
-      <button id="submitBtn" type="submit">Tạo Video</button>
-    </form>
+            <div class="tts-row">
+                <label><input type="checkbox" id="useTts" checked> Thêm giọng đọc qua openai-edge-tts</label>
+                <select id="voice">
+                    <option value="vi-VN-HoaiMyNeural">vi-VN-HoaiMyNeural</option>
+                    <option value="vi-VN-NamMinhNeural">vi-VN-NamMinhNeural</option>
+                    <option value="vi-VN-LinhNeural">vi-VN-LinhNeural</option>
+                    <option value="vi-VN-AnNeural">vi-VN-AnNeural</option>
+                    <option value="en-US-JennyNeural">en-US-JennyNeural</option>
+                    <option value="en-US-GuyNeural">en-US-GuyNeural</option>
+                </select>
+            </div>
 
-    <div id="status" class="status" aria-live="polite"></div>
-    <div id="errorBox" class="error-box" role="alert" style="display:none"></div>
-    <div id="result"></div>
+            <button id="submitBtn" type="submit">Tạo Video</button>
+        </form>
 
-    <details style="margin-top:16px">
-      <summary><strong>Hướng dẫn sửa lỗi FFmpeg/PATH (Windows)</strong></summary>
-      <div style="margin-top:8px;font-size:14px;color:#333">
-        <p>Nếu đã cài FFmpeg bằng WinGet nhưng vẫn báo không tìm thấy <code>ffmpeg</code>, thử các cách sau trong PowerShell:</p>
-        <p><strong>Cách A — thêm thư mục “Links” (tạm thời cho phiên hiện tại)</strong></p>
-        <pre><code>$links = "$env:LocalAppData\Microsoft\WinGet\Links"
-if (Test-Path $links) { $env:PATH += ";$links" }
-ffmpeg -version</code></pre>
-        <p><strong>Cách B — gọi trực tiếp file ffmpeg.exe trong “Links”</strong></p>
-        <pre><code>& "$env:LocalAppData\Microsoft\WinGet\Links\ffmpeg.exe" -version</code></pre>
-        <p><strong>Cách C — mở cửa sổ PowerShell mới</strong></p>
-        <pre><code># Đóng cửa sổ hiện tại, mở PowerShell mới rồi gõ:
-ffmpeg -version</code></pre>
-        <p><strong>Nếu vẫn không nhận — tìm đường dẫn cài đặt và thêm vào PATH</strong></p>
-        <pre><code>Get-ChildItem -Recurse "$env:LocalAppData\Microsoft\WinGet\Packages" -Filter ffmpeg.exe -ErrorAction SilentlyContinue | \
-  Select-Object -First 1 -Expand FullName
-# giả sử tìm được ...\ffmpeg-8.0-essentials_build\bin\ffmpeg.exe
-setx PATH "$($env:PATH);C:\\Users\\&lt;user&gt;\\AppData\\Local\\Microsoft\\WinGet\\Packages\\...\\ffmpeg-8.0-essentials_build\\bin"</code></pre>
-        <p>Sau khi <code>ffmpeg -version</code> hoạt động, quay lại trang này và bấm "Tạo Video".</p>
-      </div>
-    </details>
-  </div>
+        <div id="status" class="status" aria-live="polite"></div>
+        <div id="errorBox" class="error-box" role="alert" style="display:none"></div>
+        <div id="result"></div>
 
-  <script>
-  const imagesInput = document.getElementById("imagesInput");
-  const previewGrid = document.getElementById("previewGrid");
-  const submitBtn = document.getElementById("submitBtn");
-  const statusEl = document.getElementById("status");
-  const errorBox = document.getElementById("errorBox");
+        
+    </div>
 
-  imagesInput.addEventListener("change", () => {
-    previewGrid.innerHTML = "";
-    errorBox.style.display = "none";
-    const files = Array.from(imagesInput.files || []);
-    if (!files.length) return;
-    files.forEach(file => {
-      const url = URL.createObjectURL(file);
-      const item = document.createElement("div");
-      item.className = "preview";
-      item.innerHTML = `<img src="${url}" alt="${file.name}" /><div class="name">${file.name}</div>`;
-      previewGrid.appendChild(item);
-    });
-  });
+    <script>
+        const imagesInput = document.getElementById("imagesInput");
+        const previewGrid = document.getElementById("previewGrid");
+        const submitBtn = document.getElementById("submitBtn");
+        const statusEl = document.getElementById("status");
+        const errorBox = document.getElementById("errorBox");
+        const useTts = document.getElementById("useTts");
+        const voice = document.getElementById("voice");
 
-  document.getElementById("formUpload").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    errorBox.style.display = "none";
-    statusEl.textContent = "Đang tải lên và xử lý...";
-    submitBtn.disabled = true;
-    const formData = new FormData(e.target);
-    const base = location.pathname.startsWith("/VIDEO/") ? "/VIDEO" : "";
-    const res = await fetch(`${base}/create_video_multi`, {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    submitBtn.disabled = false;
-    statusEl.textContent = "";
-    if (data.url) {
-      document.getElementById("result").innerHTML = `
+        imagesInput.addEventListener("change", () => {
+            previewGrid.innerHTML = "";
+            errorBox.style.display = "none";
+            const files = Array.from(imagesInput.files || []);
+            if (!files.length) return;
+            files.forEach(file => {
+                const url = URL.createObjectURL(file);
+                const item = document.createElement("div");
+                item.className = "preview";
+                item.innerHTML = `<img src="${url}" alt="${file.name}" /><div class="name">${file.name}</div>`;
+                previewGrid.appendChild(item);
+            });
+        });
+
+        document.getElementById("formUpload").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            errorBox.style.display = "none";
+            statusEl.textContent = "Đang tải lên và xử lý...";
+            submitBtn.disabled = true;
+            const formData = new FormData(e.target);
+            if (useTts.checked) {
+                formData.append("use_tts", "true");
+                formData.append("tts_voice", voice.value);
+            }
+            const base = location.pathname.startsWith("/VIDEO/") ? "/VIDEO" : "";
+            const res = await fetch(`${base}/create_video_multi`, {
+                method: "POST",
+                body: formData,
+            });
+            const data = await res.json();
+            submitBtn.disabled = false;
+            statusEl.textContent = "";
+            if (data.url) {
+                document.getElementById("result").innerHTML = `
         <h3>Video kết quả:</h3>
         <video controls width="640">
           <source src="${data.url}" type="video/mp4">
         </video>`;
-    } else {
-      document.getElementById("result").innerHTML = "";
-      errorBox.textContent = data.error || "Có lỗi xảy ra!";
-      errorBox.style.display = "block";
-    }
-  });
-  </script>
+            } else {
+                document.getElementById("result").innerHTML = "";
+                errorBox.textContent = data.error || "Có lỗi xảy ra!";
+                errorBox.style.display = "block";
+            }
+        });
+    </script>
 </body>
+
 </html>
