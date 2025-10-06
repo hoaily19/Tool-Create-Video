@@ -180,7 +180,7 @@ def health():
         "tts_alive": alive
     })
 
-async def _create_video_multi_impl(request: Request, images: List[UploadFile], script: str, use_tts: bool = False, tts_voice: str = "en-US-JennyNeural"):
+async def _create_video_multi_impl(request: Request, images: List[UploadFile], script: str, use_tts: bool = False, tts_voice: str = "en-US-JennyNeural", aspect: str = "16:9"):
     # Kiểm tra FFmpeg (tìm nhiều vị trí phổ biến trên Windows)
     ffmpeg_path = _find_ffmpeg_executable()
     if not ffmpeg_path:
@@ -213,23 +213,40 @@ async def _create_video_multi_impl(request: Request, images: List[UploadFile], s
         font_path = next((p for p in possible_fonts if os.path.isfile(p)), None)
     else:
         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    # Xác định kích thước theo tỉ lệ khung hình
+    aspect = (aspect or "16:9").strip()
+    if aspect == "9:16":
+        target_w, target_h = 1080, 1920
+    elif aspect == "1:1":
+        target_w, target_h = 1080, 1080
+    else:
+        target_w, target_h = 1920, 1080  # 16:9 mặc định
+
     for i, (img_path, text) in enumerate(zip(img_paths, lines), start=1):
         out_clip = os.path.join(OUTPUT_DIR, f"clip_{i}.mp4")
         safe_text = text.replace("'", r"\'")
         if font_path:
             font_escaped = _escape_path_for_drawtext(font_path)
             text_escaped = _escape_for_drawtext_text(safe_text)
+            # Subtitle near bottom, dynamic size, with border + shadow for readability
             filter_str = (
-                f"drawtext=fontfile='{font_escaped}':text='{text_escaped}':fontcolor=white:fontsize=40:"
-                f"x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.5"
+                f"drawtext=fontfile='{font_escaped}':text='{text_escaped}':"
+                f"fontcolor=white:borderw=2:bordercolor=black@0.9:shadowcolor=black@0.6:shadowx=2:shadowy=2:"
+                f"fontsize=h*0.05:x=(w-text_w)/2:y=h*0.88-text_h/2"
             )
         else:
             # Fallback không chỉ định fontfile (ffmpeg tự chọn)
             text_escaped = _escape_for_drawtext_text(safe_text)
             filter_str = (
-                f"drawtext=text='{text_escaped}':fontcolor=white:fontsize=40:"
-                f"x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.5"
+                f"drawtext=text='{text_escaped}':"
+                f"fontcolor=white:borderw=2:bordercolor=black@0.9:shadowcolor=black@0.6:shadowx=2:shadowy=2:"
+                f"fontsize=h*0.05:x=(w-text_w)/2:y=h*0.88-text_h/2"
             )
+        # Scale để FIT (không crop nhiều) rồi pad để đủ khung
+        scale_filter = (
+            f"scale=w={target_w}:h={target_h}:force_original_aspect_ratio=decrease,"
+            f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2:color=black"
+        )
         audio_path = None
         if use_tts and text:
             audio_path = _synthesize_tts_mp3(text, tts_voice)
@@ -241,7 +258,7 @@ async def _create_video_multi_impl(request: Request, images: List[UploadFile], s
                 ffmpeg_path, "-hide_banner", "-loglevel", "error",
                 "-loop", "1", "-i", img_path,
                 "-i", audio_path,
-                "-vf", filter_str,
+                "-vf", f"{scale_filter},{filter_str}",
                 "-t", "5",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-shortest", "-y", out_clip
@@ -250,7 +267,7 @@ async def _create_video_multi_impl(request: Request, images: List[UploadFile], s
             cmd = [
                 ffmpeg_path, "-hide_banner", "-loglevel", "error",
                 "-loop", "1", "-i", img_path,
-                "-vf", filter_str,
+                "-vf", f"{scale_filter},{filter_str}",
                 "-t", "5",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-y", out_clip
             ]
@@ -283,13 +300,13 @@ async def _create_video_multi_impl(request: Request, images: List[UploadFile], s
 
 
 @app.post("/create_video_multi")
-async def create_video_multi(request: Request, images: List[UploadFile] = File(...), script: str = Form(...), use_tts: bool = Form(True), tts_voice: str = Form("vi-VN-HoaiMyNeural")):
-    return await _create_video_multi_impl(request, images, script, use_tts, tts_voice)
+async def create_video_multi(request: Request, images: List[UploadFile] = File(...), script: str = Form(...), use_tts: bool = Form(True), tts_voice: str = Form("vi-VN-HoaiMyNeural"), aspect: str = Form("16:9")):
+    return await _create_video_multi_impl(request, images, script, use_tts, tts_voice, aspect)
 
 
 @app.post("/VIDEO/create_video_multi")
-async def create_video_multi_under_video(request: Request, images: List[UploadFile] = File(...), script: str = Form(...), use_tts: bool = Form(True), tts_voice: str = Form("vi-VN-HoaiMyNeural")):
-    return await _create_video_multi_impl(request, images, script, use_tts, tts_voice)
+async def create_video_multi_under_video(request: Request, images: List[UploadFile] = File(...), script: str = Form(...), use_tts: bool = Form(True), tts_voice: str = Form("vi-VN-HoaiMyNeural"), aspect: str = Form("16:9")):
+    return await _create_video_multi_impl(request, images, script, use_tts, tts_voice, aspect)
 
 if __name__ == "__main__":
     import uvicorn

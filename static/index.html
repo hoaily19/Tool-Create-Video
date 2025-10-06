@@ -3,42 +3,62 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tạo Video Từ Nhiều Ảnh & Kịch Bản</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      html, body { height: 100%; }
+      .vh-100-minus { min-height: calc(100vh - 40px); }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Tạo Video Từ Nhiều Ảnh & Kịch Bản</h1>
+    <div class="container-fluid py-3 vh-100-minus d-flex flex-column">
+        <h1 class="text-center mb-3">Tạo Video Từ Nhiều Ảnh & Kịch Bản</h1>
 
-        <form id="formUpload">
-            <label>Chọn nhiều ảnh:</label>
-            <input type="file" id="imagesInput" name="images" accept="image/*" multiple required />
+        <form id="formUpload" class="mx-auto" style="max-width: 900px; width: 100%;">
+            <label class="form-label">Chọn nhiều ảnh:</label>
+            <input class="form-control" type="file" id="imagesInput" name="images" accept="image/*" multiple required />
 
             <div id="previewGrid" class="preview-grid" aria-live="polite"></div>
 
-            <label>Nhập kịch bản (mỗi dòng ứng với một ảnh):</label>
-            <textarea name="script" rows="8" placeholder="Dòng 1: Chữ cho ảnh 1&#10;Dòng 2: Chữ cho ảnh 2&#10;..."
-                required></textarea>
+            <label class="form-label">Nhập kịch bản (mỗi dòng ứng với một ảnh):</label>
+            <textarea class="form-control" name="script" rows="8" placeholder="Dòng 1: Chữ cho ảnh 1&#10;Dòng 2: Chữ cho ảnh 2&#10;..." required></textarea>
 
-            <div class="tts-row">
-                <label><input type="checkbox" id="useTts" checked> Thêm giọng đọc qua openai-edge-tts</label>
-                <select id="voice">
-                    <option value="vi-VN-HoaiMyNeural">vi-VN-HoaiMyNeural</option>
-                    <option value="vi-VN-NamMinhNeural">vi-VN-NamMinhNeural</option>
-                    <option value="vi-VN-LinhNeural">vi-VN-LinhNeural</option>
-                    <option value="vi-VN-AnNeural">vi-VN-AnNeural</option>
-                    <option value="en-US-JennyNeural">en-US-JennyNeural</option>
-                    <option value="en-US-GuyNeural">en-US-GuyNeural</option>
-                </select>
+            <div class="row g-2 align-items-center mt-2">
+                <div class="col-md-5">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="useTts" checked>
+                        <label class="form-check-label" for="useTts">Thêm giọng đọc qua openai-edge-tts</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select id="voice" class="form-select">
+                        <option value="vi-VN-HoaiMyNeural">vi-VN-HoaiMyNeural</option>
+                        <option value="vi-VN-NamMinhNeural">vi-VN-NamMinhNeural</option>
+                        <option value="vi-VN-LinhNeural">vi-VN-LinhNeural</option>
+                        <option value="vi-VN-AnNeural">vi-VN-AnNeural</option>
+                        <option value="en-US-JennyNeural">en-US-JennyNeural</option>
+                        <option value="en-US-GuyNeural">en-US-GuyNeural</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select id="aspect" class="form-select" title="Tỉ lệ khung hình">
+                        <option value="16:9" selected>16:9 (1920x1080)</option>
+                        <option value="9:16">9:16 (1080x1920)</option>
+                        <option value="1:1">1:1 (1080x1080)</option>
+                    </select>
+                </div>
             </div>
 
-            <button id="submitBtn" type="submit">Tạo Video</button>
+            <button id="submitBtn" type="submit" class="btn btn-primary w-100 mt-3">Tạo Video</button>
         </form>
 
-        <div id="status" class="status" aria-live="polite"></div>
-        <div id="errorBox" class="error-box" role="alert" style="display:none"></div>
-        <div id="result"></div>
+        <div id="status" class="status" aria-live="polite mx-auto" style="max-width:900px"></div>
+        <div id="errorBox" class="error-box mx-auto" role="alert" style="display:none; max-width:900px"></div>
+        <div id="result" class="mx-auto" style="max-width:900px"></div>
 
         
     </div>
@@ -51,6 +71,7 @@
         const errorBox = document.getElementById("errorBox");
         const useTts = document.getElementById("useTts");
         const voice = document.getElementById("voice");
+        const aspect = document.getElementById("aspect");
 
         imagesInput.addEventListener("change", () => {
             previewGrid.innerHTML = "";
@@ -76,6 +97,7 @@
                 formData.append("use_tts", "true");
                 formData.append("tts_voice", voice.value);
             }
+            formData.append("aspect", aspect.value);
             const base = location.pathname.startsWith("/VIDEO/") ? "/VIDEO" : "";
             const res = await fetch(`${base}/create_video_multi`, {
                 method: "POST",
