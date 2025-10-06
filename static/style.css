@@ -1,0 +1,146 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f3f3;
+    padding: 40px;
+  }
+  
+  .container {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  
+  h1 { text-align: center; }
+  
+  textarea, input, button {
+    width: 100%;
+    margin: 8px 0;
+    padding: 8px;
+    font-size: 16px;
+  }
+  
+  button {
+    background: #0078ff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background: #005fcc;
+  }
+  
+  /* Nhãn và bố cục form */
+  label {
+    display: block;
+    margin-top: 12px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  /* Trường nhập file */
+  input[type="file"] {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  /* Textarea dễ nhập nội dung dài */
+  textarea {
+    min-height: 160px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    resize: vertical;
+  }
+  
+  /* Trạng thái focus */
+  textarea:focus,
+  input:focus,
+  button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0,120,255,0.15);
+  }
+  
+  /* Trạng thái disabled cho nút */
+  button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  /* Khu vực kết quả */
+  #result {
+    margin-top: 16px;
+    background: #f9fbff;
+    border: 1px solid #e6efff;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  #result h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 18px;
+  }
+  
+  #result video {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.08);
+  }
+  
+  /* Responsive nhẹ */
+  @media (max-width: 640px) {
+    body { padding: 20px; }
+    .container { padding: 16px; }
+  }
+
+  /* Lưới xem trước ảnh */
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin: 10px 0 6px 0;
+  }
+  .preview {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fafafa;
+  }
+  .preview img {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    display: block;
+  }
+  .preview .name {
+    font-size: 12px;
+    padding: 6px 8px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Hộp lỗi và trạng thái */
+  .error-box {
+    background: #ffecec;
+    border: 1px solid #ffb9b9;
+    color: #b60000;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+  .status {
+    margin-top: 8px;
+    color: #333;
+    font-size: 14px;
+  }
+  
