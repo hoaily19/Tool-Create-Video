@@ -1,124 +1,485 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tạo Video Từ Nhiều Ảnh & Kịch Bản</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: { DEFAULT: '#2563eb', dark: '#1e40af' },
+              accent: { DEFAULT: '#8b5cf6' }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
     <link rel="stylesheet" href="/static/style.css" />
     <style>
       html, body { height: 100%; }
       .vh-100-minus { min-height: calc(100vh - 40px); }
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+      }
+      .preview {
+        position: relative;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .preview:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      .preview img {
+        width: 100%;
+        height: 60px;
+        object-fit: cover;
+        display: block;
+      }
+      .preview .name {
+        font-size: 0.75rem;
+        text-align: center;
+        padding: 0.25rem;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .preview button {
+        position: absolute;
+        top: 0.25rem;
+        right: 0.25rem;
+        z-index: 10;
+        background: rgba(239,68,68,0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .preview button:hover {
+        background: rgba(220,38,38,0.9);
+      }
+      .dropzone-hover {
+        border-color: #2563eb;
+        background-color: #eff6ff;
+      }
+      .error-box {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+      }
+      .status-loading {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .status-loading::after {
+        content: '';
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid #d1d5db;
+        border-top: 2px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      #player {
+        aspect-ratio: 16/9;
+      }
+      #player[data-aspect="9:16"] {
+        aspect-ratio: 9/16;
+      }
+      #player[data-aspect="1:1"] {
+        aspect-ratio: 1/1;
+      }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 </head>
-
-<body>
-    <div class="container-fluid py-3 vh-100-minus d-flex flex-column">
-        <h1 class="text-center mb-3">Tạo Video Từ Nhiều Ảnh & Kịch Bản</h1>
-
-        <form id="formUpload" class="mx-auto" style="max-width: 900px; width: 100%;">
-            <label class="form-label">Chọn nhiều ảnh:</label>
-            <input class="form-control" type="file" id="imagesInput" name="images" accept="image/*" multiple required />
-
-            <div id="previewGrid" class="preview-grid" aria-live="polite"></div>
-
-            <label class="form-label">Nhập kịch bản (mỗi dòng ứng với một ảnh):</label>
-            <textarea class="form-control" name="script" rows="8" placeholder="Dòng 1: Chữ cho ảnh 1&#10;Dòng 2: Chữ cho ảnh 2&#10;..." required></textarea>
-
-            <div class="row g-2 align-items-center mt-2">
-                <div class="col-md-5">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="useTts" checked>
-                        <label class="form-check-label" for="useTts">Thêm giọng đọc qua openai-edge-tts</label>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <select id="voice" class="form-select">
-                        <option value="vi-VN-HoaiMyNeural">vi-VN-HoaiMyNeural</option>
-                        <option value="vi-VN-NamMinhNeural">vi-VN-NamMinhNeural</option>
-                        <option value="vi-VN-LinhNeural">vi-VN-LinhNeural</option>
-                        <option value="vi-VN-AnNeural">vi-VN-AnNeural</option>
-                        <option value="en-US-JennyNeural">en-US-JennyNeural</option>
-                        <option value="en-US-GuyNeural">en-US-GuyNeural</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <select id="aspect" class="form-select" title="Tỉ lệ khung hình">
-                        <option value="16:9" selected>16:9 (1920x1080)</option>
-                        <option value="9:16">9:16 (1080x1920)</option>
-                        <option value="1:1">1:1 (1080x1080)</option>
-                    </select>
-                </div>
-            </div>
-
-            <button id="submitBtn" type="submit" class="btn btn-primary w-100 mt-3">Tạo Video</button>
-        </form>
-
-        <div id="status" class="status" aria-live="polite mx-auto" style="max-width:900px"></div>
-        <div id="errorBox" class="error-box mx-auto" role="alert" style="display:none; max-width:900px"></div>
-        <div id="result" class="mx-auto" style="max-width:900px"></div>
-
-        
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="text-center mb-8 animate-fade-in">
+      <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
+        Tạo Video Từ Nhiều Ảnh & Kịch Bản
+      </h1>
+      <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+        Tải lên ảnh, thêm kịch bản, và tạo video chuyên nghiệp chỉ với vài cú click!
+      </p>
     </div>
 
-    <script>
-        const imagesInput = document.getElementById("imagesInput");
-        const previewGrid = document.getElementById("previewGrid");
-        const submitBtn = document.getElementById("submitBtn");
-        const statusEl = document.getElementById("status");
-        const errorBox = document.getElementById("errorBox");
-        const useTts = document.getElementById("useTts");
-        const voice = document.getElementById("voice");
-        const aspect = document.getElementById("aspect");
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Form Section -->
+      <div class="space-y-6 animate-fade-in">
+        <form id="formUpload" class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
+          <!-- Image Upload -->
+          <div class="space-y-3">
+            <label class="block text-sm font-semibold text-gray-800">📸 Chọn nhiều ảnh</label>
+            <div id="dropzone" class="relative mt-2 flex justify-center px-6 py-10 rounded-xl border-2 border-dashed border-gray-300 bg-white hover:border-primary/50 transition-all duration-300 cursor-pointer">
+              <div class="text-center">
+                <svg class="mx-auto h-12 w-12 text-primary mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6h.1a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <div class="flex text-sm text-gray-600">
+                  <label for="imagesInput" class="relative cursor-pointer bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-md">
+                    Chọn tệp
+                    <input id="imagesInput" name="images" type="file" accept="image/*" multiple class="sr-only" />
+                  </label>
+                  <p class="pl-2 self-center">hoặc kéo thả tại đây</p>
+                </div>
+                <p class="mt-2 text-xs text-gray-500">Hỗ trợ PNG, JPG, JPEG (Tối đa 20 ảnh)</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>Bạn có thể kéo thả thêm ảnh.</span>
+              <button type="button" id="clearImages" class="text-red-600 hover:text-red-800 font-medium">Xóa tất cả</button>
+            </div>
+            <div id="previewGrid" class="preview-grid" aria-live="polite"></div>
+          </div>
 
-        imagesInput.addEventListener("change", () => {
-            previewGrid.innerHTML = "";
-            errorBox.style.display = "none";
-            const files = Array.from(imagesInput.files || []);
-            if (!files.length) return;
-            files.forEach(file => {
-                const url = URL.createObjectURL(file);
-                const item = document.createElement("div");
-                item.className = "preview";
-                item.innerHTML = `<img src="${url}" alt="${file.name}" /><div class="name">${file.name}</div>`;
-                previewGrid.appendChild(item);
-            });
-        });
+          <!-- Script -->
+          <div class="space-y-2">
+            <label class="block text-sm font-semibold text-gray-800">📝 Nhập kịch bản (mỗi dòng ứng với một ảnh)</label>
+            <textarea class="w-full rounded-xl border border-gray-300 px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-primary focus:border-transparent resize-none" name="script" id="script" rows="6" placeholder="Để trống để tự tạo theo tên ảnh... Ví dụ:&#10;Dòng 1: Mô tả cho ảnh 1&#10;Dòng 2: Mô tả cho ảnh 2"></textarea>
+            <p class="text-xs text-gray-500 italic">Mỗi dòng sẽ được đọc bởi giọng nói AI nếu bạn bật tính năng.</p>
+          </div>
 
-        document.getElementById("formUpload").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            errorBox.style.display = "none";
-            statusEl.textContent = "Đang tải lên và xử lý...";
-            submitBtn.disabled = true;
-            const formData = new FormData(e.target);
-            if (useTts.checked) {
-                formData.append("use_tts", "true");
-                formData.append("tts_voice", voice.value);
-            }
-            formData.append("aspect", aspect.value);
-            const base = location.pathname.startsWith("/VIDEO/") ? "/VIDEO" : "";
-            const res = await fetch(`${base}/create_video_multi`, {
-                method: "POST",
-                body: formData,
-            });
-            const data = await res.json();
-            submitBtn.disabled = false;
-            statusEl.textContent = "";
-            if (data.url) {
-                document.getElementById("result").innerHTML = `
-        <h3>Video kết quả:</h3>
-        <video controls width="640">
-          <source src="${data.url}" type="video/mp4">
-        </video>`;
-            } else {
-                document.getElementById("result").innerHTML = "";
-                errorBox.textContent = data.error || "Có lỗi xảy ra!";
-                errorBox.style.display = "block";
-            }
+          <!-- TTS and Options -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl">
+            <div class="space-y-2">
+              <label class="inline-flex items-center gap-3 select-none cursor-pointer">
+                <input id="useTts" type="checkbox" class="sr-only peer" />
+                <span class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 peer-checked:bg-primary transition-colors">
+                  <span class="h-5 w-5 translate-x-1 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></span>
+                </span>
+                <span class="text-sm font-medium text-gray-800">🔊 Thêm giọng đọc</span>
+              </label>
+            </div>
+            <select id="voice" class="border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" disabled>
+              <option value="vi-VN-HoaiMyNeural">Hoài My (Tiếng Việt)</option>
+              <option value="vi-VN-NamMinhNeural">Nam Minh (Tiếng Việt)</option>
+              <option value="vi-VN-LinhNeural">Linh (Tiếng Việt)</option>
+              <option value="vi-VN-AnNeural">An (Tiếng Việt)</option>
+              <option value="en-US-JennyNeural">Jenny (Tiếng Anh)</option>
+              <option value="en-US-GuyNeural">Guy (Tiếng Anh)</option>
+            </select>
+            <select id="aspect" class="border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+              <option value="16:9">📺 16:9 (Ngang)</option>
+              <option value="9:16">📱 9:16 (Dọc)</option>
+              <option value="1:1">⏺ 1:1 (Vuông)</option>
+            </select>
+          </div>
+
+          <!-- Color and BGM -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-800">🎨 Màu video</label>
+              <select id="color" class="w-full border border-gray-300 rounded-lg px-3 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                <option value="">Màu gốc</option>
+                <option value="warm">Ấm áp (Warm)</option>
+                <option value="cool">Lạnh lẽo (Cool)</option>
+                <option value="cinematic">Phim ảnh (Cinematic)</option>
+                <option value="bw">Đen trắng (B&W)</option>
+              </select>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Màu chữ</label>
+                  <select id="textColor" class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-primary">
+                    <option value="white">Trắng</option>
+                    <option value="yellow">Vàng</option>
+                    <option value="#00E5FF">Xanh biển nhạt</option>
+                    <option value="#FF66CC">Hồng</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Font chữ</label>
+                  <select id="fontName" class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-primary">
+                    <option value="auto">Tự động</option>
+                    <option value="arial.ttf">Arial</option>
+                    <option value="segoeui.ttf">Segoe UI</option>
+                    <option value="tahoma.ttf">Tahoma</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Hiệu ứng chữ</label>
+                <select id="textEffect" class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-primary">
+                  <option value="kf_fill">Điền màu theo giọng (mượt)</option>
+                  <option value="k_word">Tô từng từ (karaoke từ)</option>
+                  <option value="typewriter">Gõ chữ (typewriter)</option>
+                  <option value="fade_in">Hiện dần</option>
+                  <option value="pop">Bật nảy (pop)</option>
+                </select>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-800">🎵 Nhạc nền (không bản quyền)</label>
+              <input id="bgm" name="bgm" type="file" accept="audio/*" class="hidden" />
+              <div class="flex items-center gap-3">
+                <button type="button" id="bgmBtn" class="px-4 py-2 bg-gradient-to-r from-accent to-purple-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 font-medium">
+                  Chọn nhạc
+                </button>
+                <span id="bgmName" class="text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded px-2 py-1 truncate flex-1">Chưa chọn tệp</span>
+                <button type="button" id="bgmClear" class="hidden text-sm text-red-600 hover:text-red-800 font-medium">Xóa</button>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Nhạc sẽ được pha trộn nhỏ hơn giọng đọc. Sử dụng file không bản quyền để tránh vấn đề.</p>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex gap-4 pt-4">
+            <button id="btnPreview" type="button" class="flex-1 px-6 py-3 rounded-xl bg-gray-100 text-gray-800 font-semibold hover:bg-gray-200 transition-all duration-300 shadow-sm border border-gray-200">
+              👁️ Xem trước
+            </button>
+            <button id="submitBtn" type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-accent text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+              🚀 Tạo Video
+            </button>
+          </div>
+
+          <!-- Status and Error -->
+          <div id="status" class="text-sm text-gray-700 mt-4"></div>
+          <div id="errorBox" class="error-box" style="display:none"></div>
+        </form>
+      </div>
+
+      <!-- Result Section -->
+      <div class="animate-fade-in">
+        <div id="result" class="bg-white rounded-2xl border border-gray-200 shadow-xl p-6 sticky top-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span>🎬</span> Xem trước / Video kết quả
+          </h3>
+          <div id="player" class="w-full bg-black rounded-xl overflow-hidden shadow-inner" data-aspect="16:9">
+            <div class="flex items-center justify-center h-full text-gray-500 text-sm">
+              Video sẽ hiển thị ở đây sau khi tạo...
+            </div>
+          </div>
+          <p class="mt-3 text-xs text-gray-500 text-center">Chọn tỉ lệ khung hình để xem trước phù hợp.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const imagesInput = document.getElementById("imagesInput");
+    const clearImagesBtn = document.getElementById("clearImages");
+    const dropzone = document.getElementById("dropzone");
+    const previewGrid = document.getElementById("previewGrid");
+    const submitBtn = document.getElementById("submitBtn");
+    const btnPreview = document.getElementById("btnPreview");
+    const statusEl = document.getElementById("status");
+    const errorBox = document.getElementById("errorBox");
+    const useTts = document.getElementById("useTts");
+    const voice = document.getElementById("voice");
+    const aspect = document.getElementById("aspect");
+    const color = document.getElementById("color");
+    const textColor = document.getElementById("textColor");
+    const fontName = document.getElementById("fontName");
+    const textEffect = document.getElementById("textEffect");
+    const bgm = document.getElementById("bgm");
+    const bgmBtn = document.getElementById("bgmBtn");
+    const bgmName = document.getElementById("bgmName");
+    const bgmClear = document.getElementById("bgmClear");
+    const scriptEl = document.getElementById("script");
+    const player = document.getElementById("player");
+
+    useTts.checked = false;
+
+    let selectedImages = [];
+
+    // Update player aspect on select change
+    aspect.addEventListener('change', (e) => {
+      player.setAttribute('data-aspect', e.target.value);
+      player.style.aspectRatio = e.target.value.replace(':', '/');
+    });
+
+    // TTS checkbox handler
+    useTts.addEventListener('change', (e) => {
+      voice.disabled = !e.target.checked;
+      if (e.target.checked) {
+        voice.classList.remove('bg-gray-100', 'cursor-not-allowed');
+        voice.classList.add('cursor-pointer');
+      } else {
+        voice.classList.add('bg-gray-100', 'cursor-not-allowed');
+        voice.classList.remove('cursor-pointer');
+      }
+    });
+
+    function syncInputFromSelected() {
+      const dt = new DataTransfer();
+      selectedImages.forEach(f => dt.items.add(f));
+      imagesInput.files = dt.files;
+    }
+
+    function filenameToLine(name) {
+      const base = name.replace(/\.[^.]+$/, "");
+      return base.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || "Cảnh";
+    }
+
+    function ensureScriptIfEmpty() {
+      if (scriptEl.value.trim()) return;
+      const lines = selectedImages.map(f => filenameToLine(f.name));
+      scriptEl.value = lines.join("\n");
+    }
+
+    function renderPreviews() {
+      previewGrid.innerHTML = "";
+      if (selectedImages.length === 0) {
+        previewGrid.innerHTML = '<p class="col-span-full text-center text-gray-500 text-sm py-4">Chưa có ảnh nào. Hãy tải lên!</p>';
+        return;
+      }
+      selectedImages.forEach((file, idx) => {
+        const url = URL.createObjectURL(file);
+        const wrap = document.createElement("div");
+        wrap.className = "preview";
+        wrap.innerHTML = `
+          <button type="button" data-idx="${idx}" class="absolute right-1 top-1 bg-black/60 text-white text-xs rounded px-1">×</button>
+          <img src="${url}" alt="${file.name}" loading="lazy" />
+          <div class="name">${file.name}</div>
+        `;
+        previewGrid.appendChild(wrap);
+        // Cleanup URL on load
+        wrap.querySelector('img').addEventListener('load', () => URL.revokeObjectURL(url));
+      });
+      // Attach delete handlers
+      previewGrid.querySelectorAll('button[data-idx]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const i = parseInt(e.currentTarget.getAttribute('data-idx'));
+          selectedImages.splice(i, 1);
+          syncInputFromSelected();
+          renderPreviews();
+          ensureScriptIfEmpty();
         });
-    </script>
+      });
+    }
+
+    function addFiles(files) {
+      const arr = Array.from(files || []);
+      if (!arr.length) return;
+      const MAX = 20;
+      arr.forEach(f => {
+        if (selectedImages.length >= MAX) return;
+        if (!selectedImages.some(x => x.name === f.name && x.size === f.size)) {
+          selectedImages.push(f);
+        }
+      });
+      syncInputFromSelected();
+      renderPreviews();
+      ensureScriptIfEmpty();
+    }
+
+    imagesInput.addEventListener("change", () => {
+      errorBox.style.display = "none";
+      addFiles(imagesInput.files);
+    });
+
+    clearImagesBtn.addEventListener('click', () => {
+      selectedImages = [];
+      syncInputFromSelected();
+      renderPreviews();
+      scriptEl.value = '';
+    });
+
+    ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dropzone-hover'); }));
+    ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dropzone-hover'); }));
+    dropzone.addEventListener('drop', e => { addFiles(e.dataTransfer && e.dataTransfer.files); });
+
+    // BGM handlers
+    bgmBtn.addEventListener("click", () => bgm.click());
+    bgm.addEventListener("change", () => {
+      if (bgm.files && bgm.files.length) {
+        bgmName.textContent = bgm.files[0].name;
+        bgmClear.classList.remove("hidden");
+      } else {
+        bgmName.textContent = "Chưa chọn tệp";
+        bgmClear.classList.add("hidden");
+      }
+    });
+    bgmClear.addEventListener("click", () => { bgm.value = ""; bgm.dispatchEvent(new Event('change')); });
+
+    function buildFormData() {
+      const fd = new FormData(document.getElementById("formUpload"));
+      if (useTts.checked) { fd.append("use_tts", "true"); fd.append("tts_voice", voice.value); } else { fd.set("use_tts", "false"); }
+      fd.append("aspect", aspect.value);
+      fd.append("color_grade", color.value);
+      fd.append("text_color", textColor.value);
+      fd.append("font_name", fontName.value);
+      fd.append("text_effect", textEffect.value);
+      return fd;
+    }
+
+    async function submitForm(isPreview = false) {
+      errorBox.style.display = "none";
+      statusEl.classList.add('status-loading');
+      statusEl.textContent = isPreview ? "Đang tạo bản xem trước..." : "Đang tạo video...";
+      submitBtn.disabled = true; btnPreview.disabled = true;
+      const formData = buildFormData();
+      const base = location.pathname.startsWith("/VIDEO/") ? "/VIDEO" : "";
+      const url = isPreview ? `${base}/preview_video_multi` : `${base}/create_video_multi`;
+      try {
+        const res = await fetch(url, { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.url) {
+          player.setAttribute('data-aspect', aspect.value);
+          player.style.aspectRatio = aspect.value.replace(':','/');
+          player.innerHTML = `
+            <video controls class="w-full h-full object-contain" playsinline>
+              <source src="${data.url}" type="video/mp4">
+            </video>`;
+        } else {
+          player.innerHTML = "";
+          errorBox.textContent = data.error || "Có lỗi xảy ra!";
+          errorBox.style.display = "block";
+        }
+      } catch (err) {
+        errorBox.textContent = "Không thể kết nối máy chủ.";
+        errorBox.style.display = "block";
+      } finally {
+        submitBtn.disabled = false; btnPreview.disabled = false;
+        statusEl.textContent = ""; statusEl.classList.remove('status-loading');
+      }
+    }
+
+    btnPreview.addEventListener("click", () => submitForm(true));
+    document.getElementById("formUpload").addEventListener("submit", (e) => { e.preventDefault(); submitForm(false); });
+
+    // Init
+    renderPreviews();
+    player.setAttribute('data-aspect', aspect.value);
+    player.style.aspectRatio = aspect.value.replace(':','/');
+  </script>
 </body>
-
 </html>
+   
